@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulasi Chat Aman: Diffie-Hellman dan ElGamal</title>
+  <!-- Google Fonts: Inter font untuk tampilan bersih & minimalis -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    
+    <!-- HEADER MINIMALIS -->
+    <header class="header">
+      <div class="header-main">
+        <h1 class="title">Studi Kasus Kriptografi: Diffie-Hellman &amp; ElGamal</h1>
+        <p class="subtitle">Simulasi Chat Aman Tiara dan Diva di Jaringan yang Disadap Oscar &bull; Python Native</p>
+      </div>
+      <div class="header-badge">Localhost:8000</div>
+    </header>
+
+    <!-- SECTION 1: PENGATURAN PARAMETER AWAL -->
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">Pengaturan Parameter Awal</h2>
+      </div>
+      <div class="card-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="input-seed" class="label">Seed Pembangkit Acak</label>
+            <input type="number" id="input-seed" class="input input-sm" value="3">
+          </div>
+          <div class="form-group">
+            <label for="input-bit" class="label">Ukuran Prima p (Bit)</label>
+            <select id="input-bit" class="input input-sm">
+              <option value="16" selected>16-bit (Rekomendasi - Ringkas)</option>
+              <option value="32">32-bit (Standar)</option>
+              <option value="64">64-bit (Panjang)</option>
+            </select>
+          </div>
+          <div class="form-group form-action">
+            <button id="btn-init-params" class="btn btn-primary">Terapkan Parameter</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: TAHAP 0, 1, DAN 2 (PARAMETER & KUNCI) -->
+    <div class="grid-three">
+      
+      <!-- Tahap 0 -->
+      <section class="card">
+        <div class="card-header">
+          <span class="step-tag">Tahap 0</span>
+          <h3 class="card-subtitle">Parameter Publik (p, g)</h3>
+        </div>
+        <div class="card-body">
+          <div class="data-row">
+            <span class="data-label">Safe Prime (p):</span>
+            <span id="val-p" class="data-value mono">-</span>
+          </div>
+          <div class="data-row">
+            <span class="data-label">Sophie Germain (q):</span>
+            <span id="val-q" class="data-value mono">-</span>
+          </div>
+          <div class="data-row">
+            <span class="data-label">Generator (g):</span>
+            <span id="val-g" class="data-value mono">-</span>
+          </div>
+          <div class="card-note">Bersifat publik dan disebarkan ke jaringan.</div>
+        </div>
+      </section>
+
+      <!-- Tahap 1 -->
+      <section class="card">
+        <div class="card-header">
+          <span class="step-tag">Tahap 1</span>
+          <h3 class="card-subtitle">Diffie-Hellman</h3>
+        </div>
+        <div class="card-body">
+          <div class="data-row">
+            <span class="data-label">Tiara (a / A):</span>
+            <span id="val-dh-alice" class="data-value mono">-</span>
+          </div>
+          <div class="data-row">
+            <span class="data-label">Diva (b / B):</span>
+            <span id="val-dh-bob" class="data-value mono">-</span>
+          </div>
+          <div class="data-row">
+            <span class="data-label">Kunci Sesi (K):</span>
+            <span id="val-dh-k" class="data-value mono font-bold">-</span>
+          </div>
+          <div class="card-note">K Tiara = K Diva (disepakati bersama).</div>
+        </div>
+      </section>
+
+      <!-- Tahap 2 -->
+      <section class="card">
+        <div class="card-header">
+          <span class="step-tag">Tahap 2</span>
+          <h3 class="card-subtitle">Kunci ElGamal Diva</h3>
+        </div>
+        <div class="card-body">
+          <div class="data-row">
+            <span class="data-label">Kunci Privat (x):</span>
+            <span id="val-elgamal-x" class="data-value mono">-</span>
+          </div>
+          <div class="data-row">
+            <span class="data-label">Kunci Publik (y):</span>
+            <span id="val-elgamal-y" class="data-value mono">-</span>
+          </div>
+          <div class="data-row">
+            <span class="data-label">Rumus:</span>
+            <span class="data-value mono">y = g^x mod p</span>
+          </div>
+          <div class="card-note">x dirahasiakan Diva, y bersifat publik.</div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- SECTION 3: FORM KIRIM PESAN TIARA -->
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">Kirim Pesan Tiara</h2>
+      </div>
+      <div class="card-body">
+        <div class="message-form">
+          <input type="text" id="input-pesan" class="input input-full" placeholder="Ketik pesan yang ingin dikirim Tiara (misal: hai)..." autocomplete="off">
+          <button id="btn-send" class="btn btn-primary">Enkripsi &amp; Kirim</button>
+        </div>
+        <div class="quick-links">
+          <span class="quick-label">Contoh pesan:</span>
+          <button type="button" class="btn-link" data-msg="hai">hai</button>
+          <button type="button" class="btn-link" data-msg="whalo">whalo</button>
+          <button type="button" class="btn-link" data-msg="pertemuan rahasia">pertemuan rahasia</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: HASIL LOG TAHAPAN ENKRIPSI & DEKRIPSI (TAHAP 3 - 6) -->
+    <div id="messages-container" class="messages-list">
+      <!-- Pesan akan ditambahkan di sini secara dinamis -->
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
