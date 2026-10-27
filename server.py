@@ -25,12 +25,12 @@ PORT = 8000
 
 
 class CryptoSession:
-    def __init__(self, seed=3, bit_size=16):
+    def __init__(self, seed=3, bit_size=32):
         self.message_counter = 0
         self.history = []
         self.init_parameters(seed, bit_size)
 
-    def init_parameters(self, seed=3, bit_size=16):
+    def init_parameters(self, seed=3, bit_size=32):
         self.seed = int(seed) if str(seed).isdigit() else 3
         # Minimum 16 bit agar prima p > 256 dan memuat seluruh ASCII karakter (0-127/255)
         self.bit_size = int(bit_size) if str(bit_size).isdigit() and 16 <= int(bit_size) <= 64 else 16
@@ -176,7 +176,7 @@ class CryptoSession:
         return result
 
 
-SESSION = CryptoSession(seed=3, bit_size=16)
+SESSION = CryptoSession(seed=3, bit_size=32)
 
 
 class TerminalServerHandler(BaseHTTPRequestHandler):

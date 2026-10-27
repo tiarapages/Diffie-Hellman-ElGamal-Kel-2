@@ -1,310 +1,289 @@
-/**
- * JAVASCRIPT FRONTEND - MINIMALIS & BERSIH
- * Menghubungkan antarmuka putih minimalis ke Python backend
- */
-
 document.addEventListener("DOMContentLoaded", () => {
-  // DOM Elements - Parameter Setup
-  const inputSeed = document.getElementById("input-seed");
-  const inputBit = document.getElementById("input-bit");
-  const btnInitParams = document.getElementById("btn-init-params");
-
-  // DOM Elements - Tahap 0, 1, 2
-  const valP = document.getElementById("val-p");
-  const valQ = document.getElementById("val-q");
-  const valG = document.getElementById("val-g");
-  const valDhAlice = document.getElementById("val-dh-alice");
-  const valDhBob = document.getElementById("val-dh-bob");
-  const valDhK = document.getElementById("val-dh-k");
-  const valElgamalX = document.getElementById("val-elgamal-x");
-  const valElgamalY = document.getElementById("val-elgamal-y");
-
-  // DOM Elements - Input Pesan & List
-  const inputPesan = document.getElementById("input-pesan");
-  const btnSend = document.getElementById("btn-send");
+  const form = document.getElementById("message-form");
+  const input = document.getElementById("input-pesan");
+  const senderInput = document.getElementById("input-from");
+  const recipientInput = document.getElementById("input-to");
+  const sendButton = document.getElementById("btn-send");
+  const resetSessionButton = document.getElementById("btn-reset-session");
   const messagesContainer = document.getElementById("messages-container");
-  const quickLinks = document.querySelectorAll(".btn-link");
+  const status = document.getElementById("session-status");
+  let sessionReady = false;
+  let cryptoSetup = null;
 
-  // ======================================================================
-  // 1. INISIALISASI PARAMETER AWAL (TAHAP 0, 1, 2)
-  // ======================================================================
+  form.addEventListener("submit", handleSendMessage);
+  resetSessionButton.addEventListener("click", startNewSession);
 
-  btnInitParams.addEventListener("click", initParameters);
-
-  async function initParameters() {
-    const seed = inputSeed.value.trim() || "3";
-    const bit = inputBit.value || "16";
-
-    btnInitParams.disabled = true;
-    btnInitParams.textContent = "Memproses...";
-
-    try {
-      const res = await fetch("/api/init", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seed: seed, bit_size: bit })
-      });
-      const json = await res.json();
-      if (!json.success) throw new Error("Gagal menginisialisasi");
-
-      const s0 = json.setup.stage0;
-      const s1 = json.setup.stage1;
-      const s2 = json.setup.stage2;
-
-      // Tahap 0
-      valP.textContent = `${s0.p} (${s0.bit}-bit)`;
-      valQ.textContent = s0.q;
-      valG.textContent = s0.g;
-
-      // Tahap 1
-      valDhAlice.textContent = `a: ${s1.a} | A: ${s1.A}`;
-      valDhBob.textContent = `b: ${s1.b} | B: ${s1.B}`;
-      valDhK.textContent = s1.K_alice;
-
-      // Tahap 2
-      valElgamalX.textContent = s2.x;
-      valElgamalY.textContent = s2.y;
-
-      // Bersihkan daftar pesan lama jika parameter diganti
-      messagesContainer.innerHTML = "";
-      inputPesan.value = "";
-      inputPesan.focus();
-
-    } catch (err) {
-      alert("Terjadi kesalahan: " + err.message);
-    } finally {
-      btnInitParams.disabled = false;
-      btnInitParams.textContent = "Terapkan Parameter";
-    }
-  }
-
-  // Quick preset links
-  quickLinks.forEach(link => {
-    link.addEventListener("click", () => {
-      inputPesan.value = link.getAttribute("data-msg");
-      inputPesan.focus();
-    });
-  });
-
-  // ======================================================================
-  // 2. KIRIM PESAN & TAMPILKAN TAHAP 3, 4, 5, 6
-  // ======================================================================
-
-  btnSend.addEventListener("click", handleSendMessage);
-  inputPesan.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") handleSendMessage();
-  });
-
-  async function handleSendMessage() {
-    const pesan = inputPesan.value.trim();
-    if (!pesan) {
-      inputPesan.focus();
-      return;
-    }
-
-    btnSend.disabled = true;
-    btnSend.textContent = "Memproses...";
-
-    try {
-      const res = await fetch("/api/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: pesan, tamper: false })
-      });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error || "Gagal memproses");
-
-      appendMessageCard(json.data);
-
-      inputPesan.value = "";
-      inputPesan.focus();
-
-      // Scroll halus ke pesan baru
-      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-
-    } catch (err) {
-      alert("Error: " + err.message);
-    } finally {
-      btnSend.disabled = false;
-      btnSend.textContent = "Enkripsi & Kirim";
-    }
-  }
-
-  function appendMessageCard(data) {
-    const s3 = data.stage3;
-    const s4 = data.stage4;
-    const s5 = data.stage5;
-    const s6 = data.stage6;
-
-    // Baris tabel karakter untuk Tahap 3
-    let s3Rows = "";
-    s3.blocks.forEach(b => {
-      s3Rows += `
-        <tr>
-          <td>'${escapeHtml(b.char)}'</td>
-          <td>${b.m}</td>
-          <td>${b.k}</td>
-          <td>${b.c1}</td>
-          <td>${b.s}</td>
-          <td>${b.c2}</td>
-        </tr>
-      `;
-    });
-
-    // Baris tabel karakter untuk Tahap 5
-    let s5Rows = "";
-    s5.blocks.forEach((b, idx) => {
-      s5Rows += `
-        <tr>
-          <td>#${idx + 1}</td>
-          <td>${b.s}</td>
-          <td>${b.s_inv}</td>
-          <td>${b.m}</td>
-          <td>'${escapeHtml(b.char)}'</td>
-        </tr>
-      `;
-    });
-
-    // List paket jaringan Tahap 4
-    let s4Rows = "";
-    s4.network_blocks.forEach(nb => {
-      s4Rows += `
-        <tr>
-          <td>Blok #${nb.index}</td>
-          <td>${nb.c1}</td>
-          <td>${nb.c2}</td>
-        </tr>
-      `;
-    });
-
-    const card = document.createElement("div");
-    card.className = "message-block";
-
-    card.innerHTML = `
-      <div class="msg-summary-header">
-        <div>
-          <strong>Pesan #${data.message_number}:</strong> "${escapeHtml(data.original_pesan)}"
-        </div>
-        <div style="font-size:12px; color:var(--text-muted);">
-          Pengirim: Tiara &bull; Penerima: Diva
-        </div>
-      </div>
-
-      <div class="msg-stages-content">
-
-        <!-- TAHAP 3: TIARA ENKRIPSI -->
-        <div class="stage-box">
-          <div class="stage-box-title">Tahap 3 - Tiara Mengenkripsi Pesan (ElGamal)</div>
-          <div class="stage-desc">
-            Setiap karakter diubah menjadi kode angka (ASCII m) lalu dienkripsi dengan k acak: c1 = g^k mod p, c2 = m * y^k mod p.
-          </div>
-          <table class="table-simple">
-            <thead>
-              <tr>
-                <th>Karakter</th>
-                <th>ASCII (m)</th>
-                <th>k Acak</th>
-                <th>c1 = g^k mod p</th>
-                <th>s = y^k mod p</th>
-                <th>c2 = m * s mod p</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${s3Rows}
-            </tbody>
-          </table>
-          <div class="info-row" style="margin-top:12px; padding-top:8px; border-top:1px dashed var(--border-color);">
-            <span class="data-label">Tag Verifikasi Integritas Tiara:</span>
-            <span class="tag-highlight">${s3.tag}</span>
-          </div>
-        </div>
-
-        <!-- TAHAP 4: JARINGAN (OSCAR MENYADAP) -->
-        <div class="stage-box">
-          <div class="stage-box-title">Tahap 4 - Data yang Lewat di Jaringan (Disadap Oscar)</div>
-          <div class="stage-desc">
-            Oscar melihat ciphertext (c1, c2) dan tag berikut di jaringan publik:
-          </div>
-          <table class="table-simple">
-            <thead>
-              <tr>
-                <th>Blok</th>
-                <th>c1</th>
-                <th>c2</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${s4Rows}
-            </tbody>
-          </table>
-          <div class="info-row" style="margin-top:10px;">
-            <span class="data-label">Transmitted Tag:</span>
-            <span class="mono">${s4.tag}</span>
-          </div>
-          <div class="card-note" style="margin-top:8px;">
-            Oscar tidak memiliki kunci privat Diva (x) maupun k acak, sehingga tidak dapat menghitung c1^x untuk membuka pesan (Masalah Logaritma Diskrit).
-          </div>
-        </div>
-
-        <!-- TAHAP 5: DIVA MENDEKRIPSI -->
-        <div class="stage-box">
-          <div class="stage-box-title">Tahap 5 - Diva Mendekripsi Pesan (ElGamal)</div>
-          <div class="stage-desc">
-            Diva menghitung shared secret s = c1^x mod p, invers modular s^-1, dan memulihkan karakter m = c2 * s^-1 mod p:
-          </div>
-          <table class="table-simple">
-            <thead>
-              <tr>
-                <th>Blok</th>
-                <th>s = c1^x mod p</th>
-                <th>Invers s^-1 mod p</th>
-                <th>m Pulih</th>
-                <th>Karakter</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${s5Rows}
-            </tbody>
-          </table>
-          <div class="info-row" style="margin-top:12px; padding-top:8px; border-top:1px dashed var(--border-color);">
-            <span class="data-label">Hasil Dekripsi Diva:</span>
-            <strong style="font-size:14px; color:var(--text-main);">"${escapeHtml(s5.decrypted_pesan)}"</strong>
-          </div>
-        </div>
-
-        <!-- TAHAP 6: DIVA VERIFIKASI DENGAN KUNCI SESI DH -->
-        <div class="stage-box">
-          <div class="stage-box-title">Tahap 6 - Verifikasi Integritas dengan Kunci Sesi Diffie-Hellman</div>
-          <div class="info-row">
-            <span class="data-label">Tag dari Tiara:</span>
-            <span class="mono">${s6.tag_alice}</span>
-          </div>
-          <div class="info-row">
-            <span class="data-label">Tag Hitungan Diva:</span>
-            <span class="mono">${s6.tag_bob}</span>
-          </div>
-          <div class="info-row" style="margin-top:4px;">
-            <span class="data-label">Pesan Dekripsi = Pesan Asli:</span>
-            <span class="mono font-bold">${s6.ok_pesan ? "YA" : "TIDAK"}</span>
-          </div>
-          <div class="info-row">
-            <span class="data-label">Tag Otentikasi Cocok:</span>
-            <span class="mono font-bold">${s6.ok_tag ? "YA" : "TIDAK"}</span>
-          </div>
-          <div class="status-badge-ok">
-            Pesan Tiara sampai ke Diva dengan aman, utuh, dan terverifikasi.
-          </div>
-        </div>
-
+  async function startNewSession() {
+    sessionReady = false;
+    cryptoSetup = null;
+    setComposerEnabled(false);
+    resetSessionButton.disabled = true;
+    status.textContent = "Menyiapkan sesi enkripsi...";
+    status.classList.remove("status-error");
+    messagesContainer.innerHTML = `
+      <div id="empty-state" class="empty-state">
+        <div class="empty-icon" aria-hidden="true">✉</div>
+        <h3>Belum ada pesan terkirim</h3>
+        <p>Tulis pesan di bawah. Enkripsi dan verifikasi berjalan otomatis.</p>
       </div>
     `;
 
-    messagesContainer.appendChild(card);
+    try {
+      const result = await requestJson("/api/init", {
+        method: "POST",
+        body: JSON.stringify({ seed: "3", bit_size: "32" })
+      });
+      cryptoSetup = result.setup;
+      sessionReady = true;
+      status.textContent = "Sesi enkripsi siap";
+      status.classList.remove("status-error");
+      senderInput.focus();
+    } catch (error) {
+      status.textContent = "Tidak dapat memulai sesi enkripsi";
+      showError(error);
+    } finally {
+      resetSessionButton.disabled = false;
+      setComposerEnabled(sessionReady);
+    }
   }
 
-  function escapeHtml(str) {
-    if (!str) return "";
-    return String(str)
+  async function handleSendMessage(event) {
+    event.preventDefault();
+    const message = input.value.trim();
+    const sender = senderInput.value.trim();
+    const recipient = recipientInput.value.trim();
+    if (!sessionReady) return;
+    if (!sender || !recipient || !message) {
+      status.textContent = "Lengkapi nama pengirim, penerima, dan isi pesan.";
+      form.reportValidity();
+      return;
+    }
+
+    setComposerEnabled(false);
+    sendButton.querySelector("span").textContent = "Mengirim...";
+
+    try {
+      const result = await requestJson("/api/send", {
+        method: "POST",
+        body: JSON.stringify({ message, tamper: false })
+      });
+      appendMessage(result.data, sender, recipient, cryptoSetup);
+      input.value = "";
+      status.textContent = "Pesan berhasil diproses dan dikirim ke simulasi.";
+      status.classList.remove("status-error");
+      input.focus();
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    } catch (error) {
+      showError(error);
+    } finally {
+      sendButton.querySelector("span").textContent = "Kirim pesan";
+      setComposerEnabled(sessionReady);
+    }
+  }
+
+  async function requestJson(url, options) {
+    const response = await fetch(url, {
+      headers: { "Content-Type": "application/json" },
+      ...options
+    });
+    const result = await response.json();
+    if (!response.ok || result.success === false) {
+      throw new Error(result.error || "Terjadi kesalahan saat memproses permintaan.");
+    }
+    return result;
+  }
+
+  function appendMessage(data, sender, recipient, setup) {
+    const emptyState = document.getElementById("empty-state");
+    if (emptyState) emptyState.remove();
+
+    const isSafe = data.stage6.is_safe;
+    const stage0 = setup.stage0;
+    const stage1 = setup.stage1;
+    const stage2 = setup.stage2;
+    const messageElement = document.createElement("article");
+    messageElement.className = "message-row email-card";
+    messageElement.innerHTML = `
+      <div class="message-bubble">
+        <div class="email-heading">
+          <div class="email-addresses">
+            <p><strong>Dari:</strong> ${escapeHtml(sender)}</p>
+            <p><strong>Kepada:</strong> ${escapeHtml(recipient)}</p>
+          </div>
+          <span class="email-time">${new Date().toLocaleString("id-ID", {
+            dateStyle: "short",
+            timeStyle: "short"
+          })}</span>
+        </div>
+        <div class="recipient-message">
+          <div class="recipient-message-heading">
+            <span>Dibuka oleh <strong>${escapeHtml(recipient)}</strong></span>
+            <span class="view-badge ${isSafe ? "is-verified" : "is-warning"}">${isSafe ? "Terverifikasi" : "Perlu diperiksa"}</span>
+          </div>
+          <p class="message-text">${escapeHtml(data.stage5.decrypted_pesan)}</p>
+          <p class="delivery-status ${isSafe ? "is-verified" : "is-warning"}">
+            ${isSafe ? "Pesan utuh · Tag cocok" : "Pesan berubah atau tag tidak cocok"}
+          </p>
+        </div>
+
+        <div class="security-view oscar-view" aria-label="Data yang terlihat oleh Oscar">
+          <div class="security-view-heading">
+            <h3>Oscar menyadap jaringan</h3>
+            <span class="view-badge">Ciphertext saja</span>
+          </div>
+          <p class="security-view-description">Oscar melihat pasangan ciphertext ElGamal (c1, c2), bukan isi pesan.</p>
+          <div class="intercepted-packets">
+            ${data.stage4.network_blocks.map(block => `
+              <div class="intercepted-packet">
+                <span>Blok ${escapeHtml(block.index)}</span>
+                <code>(c1: ${escapeHtml(block.c1)}, c2: ${escapeHtml(block.c2)})</code>
+              </div>
+            `).join("")}
+          </div>
+          <p class="intercepted-tag">Tag integritas (bukan ciphertext): <code>${escapeHtml(data.stage4.tag)}</code></p>
+          <button class="try-oscar-button" type="button">Coba baca sebagai Oscar</button>
+          <p class="oscar-result" aria-live="polite">Oscar belum mencoba membaca paket ini.</p>
+        </div>
+        <details class="crypto-details">
+          <summary>Lihat rincian tahapan Diffie–Hellman &amp; ElGamal</summary>
+          <div class="crypto-details-content">
+            <section class="crypto-stage">
+              <h4>Tahap 0 — Parameter publik</h4>
+              <p>Prima aman p = 2q + 1 dan generator g menjadi dasar pertukaran kunci dan enkripsi (${escapeHtml(stage0.bit)}-bit).</p>
+              <div class="stage-values">
+                <span>p = <code>${escapeHtml(stage0.p)}</code></span>
+                <span>q = <code>${escapeHtml(stage0.q)}</code></span>
+                <span>g = <code>${escapeHtml(stage0.g)}</code></span>
+              </div>
+            </section>
+
+            <section class="crypto-stage">
+              <h4>Tahap 1 — Pertukaran kunci Diffie–Hellman</h4>
+              <p>${escapeHtml(sender)} dan ${escapeHtml(recipient)} bertukar nilai publik lalu masing-masing menghitung kunci sesi yang sama.</p>
+              <div class="stage-values">
+                <span>${escapeHtml(sender)}: rahasia a = <code>${escapeHtml(stage1.a)}</code>, publik A = <code>${escapeHtml(stage1.A)}</code></span>
+                <span>${escapeHtml(recipient)}: rahasia b = <code>${escapeHtml(stage1.b)}</code>, publik B = <code>${escapeHtml(stage1.B)}</code></span>
+                <span>K ${escapeHtml(sender)} = B<sup>a</sup> mod p = <code>${escapeHtml(stage1.K_alice)}</code></span>
+                <span>K ${escapeHtml(recipient)} = A<sup>b</sup> mod p = <code>${escapeHtml(stage1.K_bob)}</code></span>
+                <strong class="${stage1.success ? "is-verified" : "is-warning"}">
+                  ${stage1.success ? "Kunci sesi cocok" : "Kunci sesi tidak cocok"}
+                </strong>
+              </div>
+            </section>
+
+            <section class="crypto-stage">
+              <h4>Tahap 2 — Kunci ElGamal ${escapeHtml(recipient)}</h4>
+              <p>${escapeHtml(recipient)} merahasiakan x dan membagikan y sebagai kunci publik untuk mengenkripsi pesan kepadanya.</p>
+              <div class="stage-values">
+                <span>Privat x = <code>${escapeHtml(stage2.x)}</code> (rahasia penerima dalam simulasi)</span>
+                <span>Publik y = g<sup>x</sup> mod p = <code>${escapeHtml(stage2.y)}</code></span>
+              </div>
+            </section>
+
+            <section class="crypto-stage">
+              <h4>Tahap 3 — Enkripsi pesan</h4>
+              <p>Setiap karakter m dienkripsi memakai k acak: c1 = g<sup>k</sup> mod p dan c2 = m × y<sup>k</sup> mod p.</p>
+              <div class="stage-table-wrap">
+                <table class="stage-table">
+                  <thead><tr><th>Karakter</th><th>m</th><th>k</th><th>c1</th><th>s = y<sup>k</sup></th><th>c2</th></tr></thead>
+                  <tbody>
+                    ${data.stage3.blocks.map(block => `
+                      <tr>
+                        <td>${escapeHtml(block.char)}</td>
+                        <td>${escapeHtml(block.m)}</td>
+                        <td>${escapeHtml(block.k)}</td>
+                        <td>${escapeHtml(block.c1)}</td>
+                        <td>${escapeHtml(block.s)}</td>
+                        <td>${escapeHtml(block.c2)}</td>
+                      </tr>
+                    `).join("")}
+                  </tbody>
+                </table>
+              </div>
+              <p>Tag integritas dari ${escapeHtml(sender)}: <code>${escapeHtml(data.stage3.tag)}</code></p>
+            </section>
+
+            <section class="crypto-stage">
+              <h4>Tahap 4 — Data yang terlihat di jaringan</h4>
+              <p>Oscar melihat ciphertext (c1, c2) dan tag integritas. Ia tidak memiliki kunci privat x milik ${escapeHtml(recipient)} atau k acak untuk menghitung rahasia s.</p>
+              <div class="stage-table-wrap">
+                <table class="stage-table">
+                  <thead><tr><th>Blok</th><th>c1</th><th>c2</th></tr></thead>
+                  <tbody>
+                    ${data.stage4.network_blocks.map(block => `
+                      <tr>
+                        <td>${escapeHtml(block.index)}</td>
+                        <td>${escapeHtml(block.c1)}</td>
+                        <td>${escapeHtml(block.c2)}</td>
+                      </tr>
+                    `).join("")}
+                  </tbody>
+                </table>
+              </div>
+              <p>Tag yang dikirim: <code>${escapeHtml(data.stage4.tag)}</code></p>
+            </section>
+
+            <section class="crypto-stage">
+              <h4>Tahap 5 — Dekripsi oleh ${escapeHtml(recipient)}</h4>
+              <p>${escapeHtml(recipient)} menghitung s = c1<sup>x</sup> mod p, lalu memulihkan m = c2 × s<sup>-1</sup> mod p.</p>
+              <div class="stage-table-wrap">
+                <table class="stage-table">
+                  <thead><tr><th>Blok</th><th>s</th><th>s<sup>-1</sup></th><th>m pulih</th><th>Karakter</th></tr></thead>
+                  <tbody>
+                    ${data.stage5.blocks.map((block, index) => `
+                      <tr>
+                        <td>${index + 1}</td>
+                        <td>${escapeHtml(block.s)}</td>
+                        <td>${escapeHtml(block.s_inv)}</td>
+                        <td>${escapeHtml(block.m)}</td>
+                        <td>${escapeHtml(block.char)}</td>
+                      </tr>
+                    `).join("")}
+                  </tbody>
+                </table>
+              </div>
+              <p>Hasil dekripsi: <strong>${escapeHtml(data.stage5.decrypted_pesan)}</strong></p>
+            </section>
+
+            <section class="crypto-stage">
+              <h4>Tahap 6 — Verifikasi integritas oleh ${escapeHtml(recipient)}</h4>
+              <p>Tag = checksum(pesan) × K mod p. ${escapeHtml(recipient)} menghitung ulang tag dari pesan hasil dekripsi lalu membandingkannya dengan tag yang diterima.</p>
+              <div class="stage-values">
+                <span>Tag diterima = <code>${escapeHtml(data.stage6.tag_alice)}</code></span>
+                <span>Tag hitungan ${escapeHtml(recipient)} = <code>${escapeHtml(data.stage6.tag_bob)}</code></span>
+                <strong class="${isSafe ? "is-verified" : "is-warning"}">
+                  ${isSafe ? "Pesan utuh dan tag cocok" : "Pesan berubah atau tag tidak cocok"}
+                </strong>
+              </div>
+            </section>
+          </div>
+        </details>
+      </div>
+    `;
+    messageElement.querySelector(".try-oscar-button").addEventListener("click", event => {
+      const result = event.currentTarget.parentElement.querySelector(".oscar-result");
+      result.textContent = `Oscar gagal membaca pesan: ia hanya memiliki ciphertext, bukan kunci privat x milik ${recipient}.`;
+      event.currentTarget.disabled = true;
+      event.currentTarget.textContent = "Oscar tidak dapat membaca pesan";
+    });
+    messagesContainer.appendChild(messageElement);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
+
+  function setComposerEnabled(enabled) {
+    input.disabled = !enabled;
+    senderInput.disabled = !enabled;
+    recipientInput.disabled = !enabled;
+    sendButton.disabled = !enabled;
+  }
+
+  function showError(error) {
+    status.textContent = error.message;
+    status.classList.add("status-error");
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
@@ -312,6 +291,5 @@ document.addEventListener("DOMContentLoaded", () => {
       .replace(/'/g, "&#039;");
   }
 
-  // Inisialisasi awal saat pertama kali buka
-  initParameters();
+  startNewSession();
 });
